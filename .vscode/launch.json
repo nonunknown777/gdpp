@@ -1,0 +1,29 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Build and Run with SCons",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/my_program",
+            "args": [
+                "-j",
+                "12"  // Replace with your SCons build target or arguments
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "Run SCons",
+            "miDebuggerPath": "/usr/bin/gdb"  // Replace with the path to your gdb executable
+        }
+    ]
+}

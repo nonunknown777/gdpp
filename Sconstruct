@@ -1,0 +1,17 @@
+import os
+
+# Define the source and build directories
+src_dir = 'src'
+build_dir = 'build'
+
+# Get a list of all C++ source files in the src/ directory
+cpp_sources = [os.path.join(src_dir, file) for file in os.listdir(src_dir) if file.endswith('.cpp')]
+
+# Specify the compiler and flags
+env = Environment(CXX='g++', CXXFLAGS=['-std=c++17', '-O0', "-g", "-DDEBUG"])
+
+# Set the build directory
+VariantDir(build_dir, src_dir)
+
+# Build the executable
+program = env.Program(target='my_program', source=cpp_sources)

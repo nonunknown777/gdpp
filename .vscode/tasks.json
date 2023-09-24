@@ -1,0 +1,17 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run SCons",
+            "type": "shell",
+            "command": "scons",  // Replace with the correct path to your SCons executable if necessary
+            "args": [
+                "-j","12"  // Replace with your SCons build target or arguments
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}
