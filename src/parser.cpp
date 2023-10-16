@@ -3,26 +3,32 @@
 
 #include "parser.h"
 
+#define ERR_MSG(token, msg) \
+        error = new Error(token, msg); \
+        push_error();
+
+#define CHECK_IDENTIFIER(token) \
+        if (current_token->type != TokenType::IDENTIFIER) { \
+        std::string msg = "Expected " + print_token_type(TokenType::IDENTIFIER) + " but found: " + print_token_type(current_token->type) + " \""+current_token->lexeme+"\""; \
+        error = new Error(token, msg); \
+        push_error(); \
+        return nullptr; \
+        }
+
 void Parser::parse(TokenVector& tokens) {
     this->tokens = &tokens;
     index = 0;
     Script script = Script();
+    Block body = Block();
+    script.body = &body;
     NodePTR script_ptr = NodePTR(NodeType::SCRIPT, &script);
     
-    create_nodes(script_ptr);
+    create_script(script);
+
+    create_nodes(script_ptr, body);
 }
 
-void Parser::create_nodes(NodePTR& ptr) {
-
-    enum Context {
-        SCRIPT_BODY,
-        FUNCTION_BODY
-    };
-
-    Context context;
-
-    if (ptr.node_type == NodeType::SCRIPT) context = SCRIPT_BODY;
-    if (ptr.node_type == NodeType::FUNCTION_DECLARATION) context = FUNCTION_BODY; 
+void Parser::create_script(Script& scr) {
 
     for (size_t i = 0; i < tokens->size(); i++)
     {
@@ -30,25 +36,43 @@ void Parser::create_nodes(NodePTR& ptr) {
         switch(current_token->type) {
 
             case TokenType::CLASS_NAME:
-                if (context == SCRIPT_BODY)
-                //TODO: free cd
-                cd = create_node_class_declaration();
-                push_error();
-                script.class_declaration = cd;
+              scr.class_declaration = create_node_class_declaration();
             break;
 
             case TokenType::EXTENDS:
-                //TODO: free in
-                in = create_inheritance();
-                push_error();
-                script.parent = in;
+             scr.parent = create_inheritance();
             break;
 
+            default:
+                ERR_MSG(*current_token, "Script must have class_name and extends before body");
+            break;
+        }
+
+        consume_next();
+        i = index;
+    }
+}
+
+void Parser::create_nodes(const NodePTR& p_owner, Block& p_block) {
+
+    for (size_t i = 0; i < tokens->size(); i++)
+    {
+        current_token = &tokens->at(index);
+        switch(current_token->type) {
+
             case TokenType::FUNC:
-                //TODO: free func
-                func = create_function();
-                push_error();
-                
+                if (p_owner.node_type != NodeType::SCRIPT) {
+                    ERR_MSG(*current_token, "is not valid at this context");
+                    break; //TODO: maybe should be return? but continuing is better for gathering more errors
+                }
+                NodePTR function = NodePTR(NodeType::FUNCTION_DECLARATION, create_function());
+                p_block.nodes.push_back(function);
+            break;
+
+            
+
+            default:
+                ERR_MSG(*current_token, "invalid/unimplemented token");
             break;
         }
 
@@ -65,19 +89,16 @@ void Parser::consume_next() {
     current_token = &tokens->at(index);
 }
 
+
 ClassDeclaration* Parser::create_node_class_declaration() {
 
     //Rule: ClassDefinition ::= "class_name" Identifier
 
     ClassDeclaration* cd = new ClassDeclaration("");
-    consume_next();
-    if (current_token->type != TokenType::IDENTIFIER) {
-        std::string msg = "Expected " + print_token_type(TokenType::IDENTIFIER) + " but found: " + print_token_type(current_token->type) + " \""+current_token->lexeme+"\"";
-        error = new Error(*current_token, msg);
 
-        return nullptr;
-        
-    }
+    consume_next();
+
+    CHECK_IDENTIFIER(*current_token);
 
 
     cd->class_name = current_token->lexeme;
@@ -90,12 +111,8 @@ Inheritance* Parser::create_inheritance() {
 
     Inheritance* in = new Inheritance("");
     consume_next();
-    if (current_token->type != TokenType::IDENTIFIER) {
-        std::string msg = "Expected " + print_token_type(TokenType::IDENTIFIER) + " but found: " + print_token_type(current_token->type) + " \""+current_token->lexeme+"\"";
-        error = new Error(*current_token, msg);
-
-        return nullptr;
-    }
+    
+    CHECK_IDENTIFIER(*current_token);
 
     in->parent_name = current_token->lexeme;
 
@@ -104,7 +121,7 @@ Inheritance* Parser::create_inheritance() {
 
 FunctionDeclaration* Parser::create_function() {
 
-    //Rule: FunctionDeclaration ::= "func" Identifier + "(" Parameter[] ")" "->" Return ":" Block "pass"
+    //Rule: FunctionDeclaration ::= "func" Identifier + "(" Parameter[] ")" "->" ReturnType ":" Block "pass"
 
     FunctionDeclaration* func = new FunctionDeclaration("");
     check_next(TokenType::IDENTIFIER);
@@ -113,18 +130,18 @@ FunctionDeclaration* Parser::create_function() {
 
     check_next(TokenType::PARENTHESIS_OPEN);
 
-    func->args = std::vector<Parameter*>();
+    func->args = std::vector<Parameter*>(); //TODO: must not be a pointer?
 
     consume_next();
     while(current_token->type != PARENTHESIS_CLOSE) {
-        //TODO: Finish with function arguments
+        //TODO: Implement function arguments
         consume_next();
     }
 
     if (func->args.size() == 0) {
         printf("empty function declaration");
     } else {
-
+        printf("TODO: what has to be done with functions arguments?");
     }
 
     check_next(TokenType::FORWARD_ARROW);
@@ -138,11 +155,11 @@ FunctionDeclaration* Parser::create_function() {
 
     check_next(TokenType::COLON);
 
-    Block* function_body = new Block();
+    Block function_body = Block();
 
     NodePTR ptr = NodePTR(NodeType::FUNCTION_DECLARATION, func);
 
-    consume_block(ptr);
+    create_nodes(ptr, function_body);
 
     check_next(TokenType::PASS);
 
@@ -150,15 +167,7 @@ FunctionDeclaration* Parser::create_function() {
 
 }
 
-void Parser::consume_block(NodePTR& ptr) {
 
-    switch(ptr.node_type) {
-        case NodeType::FUNCTION_DECLARATION:
-            FunctionDeclaration* func = static_cast<FunctionDeclaration*>(ptr.node_ptr);
-            
-        break;
-    }
-}
 
 void Parser::check_valid_return_type() {
     consume_next();

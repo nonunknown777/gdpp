@@ -51,7 +51,7 @@ struct Block : Node {
 };
 
 struct Script : Node {
-    Block* block;
+    Block* body;
     Inheritance* parent;
     ClassDeclaration* class_declaration;
 
@@ -97,7 +97,7 @@ struct FunctionDeclaration : Node {
     std::string function_name;
     ReturnType* return_type;
     std::vector<Parameter*> args;
-    // std::vector<std::string> body; //TODO: maybe its another type than string
+    std::vector<NodePTR> body;
     FunctionDeclaration(std::string fn) : Node(FUNCTION_DECLARATION) {};
 };
 
@@ -141,8 +141,8 @@ class Parser {
         int index;
         TokenVector* tokens;
         Token* current_token;
-        void create_nodes(NodePTR& ptr);
-        void consume_block(NodePTR& ptr);
+        void create_nodes(const NodePTR& p_owner,Block& p_block);
+        void create_script(Script& scr);
         void consume_next();
         void check_next(TokenType token_type);
         void check_valid_return_type();
